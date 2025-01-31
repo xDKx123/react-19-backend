@@ -1,36 +1,52 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # POSTGRES_USER: ${POSTGRES_USER}
+      # POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # POSTGRES_DB: ${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_17:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
   app:
     build:
       context: .
       dockerfile: docker/Dockerfile
     ports:
       - "8081:8080"
+      - "40000:40000"
+    env_file:
+      - .env
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_USER${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     depends_on:
-      - postgres
+      # - postgres
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./src:/app/src # Mount the src directory to enable real-time code updates
-      - /app/vendor    # Use this to persist dependencies
-
-  postgres:
-    image: postgres:15
-    container_name: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
+      #- ./src:/app/src # Mount the src directory to enable real-time code updates
+      #- /app/vendor    # Use this to persist dependencies
+      #- ./static:/app/static # Mount the static directory to enable real-time static file updates
+      - ./:/app
 volumes:
-  postgres_data:
+  postgres_data_17:
