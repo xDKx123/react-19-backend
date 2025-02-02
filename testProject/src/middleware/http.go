@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"slices"
+	"strings"
 )
 
 type StandardHttpResponseBody struct {
-	Data   interface{} `json:"data,omitempty"`
-	Errors interface{} `json:"errors,omitempty"`
+	Data   interface{} `json:"data,null"`
+	Errors interface{} `json:"errors,null"`
 }
 
 //func StandardHttpResponse(c *gin.Context, data interface{}, errors interface{}, responseCode int) {
@@ -25,8 +27,25 @@ type StandardHttpResponseBody struct {
 //	c.JSON(respCode, response)
 //}
 
+func ignoreRouter(c *gin.Context) bool {
+	pathsToIgnore := []string{"/", "/ping"}
+
+	if slices.Contains(pathsToIgnore, c.Request.URL.Path) {
+		return true
+	}
+	if strings.HasPrefix(c.Request.URL.Path, "/static") {
+		return true
+	}
+
+	return false
+}
 func JSONResponseGinMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if ignoreRouter(c) {
+			c.Next()
+			return
+		}
+
 		bodyWrapper := &responseWriter{ResponseWriter: c.Writer, body: &bytes.Buffer{}}
 		c.Writer = bodyWrapper
 
@@ -34,17 +53,19 @@ func JSONResponseGinMiddleware() gin.HandlerFunc {
 
 		statusCode := c.Writer.Status()
 
-		if bodyWrapper.body.Len() > 0 {
-			var originalData interface{}
-
-			err := json.Unmarshal(bodyWrapper.body.Bytes(), &originalData)
-			if err != nil {
-				c.JSON(statusCode, StandardHttpResponseBody{Errors: "Invalid Response Format"})
-				return
-			}
-
-			c.JSON(statusCode, StandardHttpResponseBody{Data: originalData})
+		if bodyWrapper.body.Len() == 0 {
+			return
 		}
+
+		var originalData interface{}
+
+		err := json.Unmarshal(bodyWrapper.body.Bytes(), &originalData)
+		if err != nil {
+			c.JSON(statusCode, StandardHttpResponseBody{Errors: "Invalid Response Format"})
+			return
+		}
+
+		c.JSON(statusCode, StandardHttpResponseBody{Data: originalData})
 	}
 }
 

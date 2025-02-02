@@ -1,21 +1,18 @@
 package middleware
 
 import (
-	"context"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
 )
 
-type contextKey string
+func AuthMiddlewareV2() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
 
-const userKey contextKey = "user"
-
-// AuthMiddleware validates the Bearer token and attaches the claims to the context
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			c.Abort()
 			return
 		}
 
@@ -25,20 +22,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		// Validate the token
 		claims, err := ValidateToken(tokenString)
 		if err != nil {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.Abort()
 			return
 		}
 
 		// Add the claims to the context
-		ctx := context.WithValue(r.Context(), userKey, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-// GetUserFromContext retrieves the user claims from the context
-func GetUserFromContext(ctx context.Context) *Claims {
-	if claims, ok := ctx.Value(userKey).(*Claims); ok {
-		return claims
+		// log.Println("Validated user with claims: ", claims)
+		c.Set("claims", claims)
 	}
-	return nil
 }

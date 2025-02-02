@@ -1,10 +1,7 @@
 package middleware
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -33,12 +30,14 @@ type Claims struct {
 }
 
 func GenerateToken(userID uint, email string, expiration time.Duration) (string, error) {
+	var now = time.Now()
+
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(expiration)),
+			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
 
@@ -76,53 +75,4 @@ func getRequestId(r *http.Request) string {
 	}
 
 	return requestId
-}
-
-func requestLogging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		s := time.Now()
-		// most of the required data is already available from requests context.
-		ctx := r.Context()
-		requestID := getRequestId(r)
-
-		scheme := "http"
-		if r.TLS != nil {
-			scheme = "https"
-		}
-
-		logger := logrus.WithFields(logrus.Fields{
-			"request_id": requestID,
-		})
-
-		uri := fmt.Sprintf("%s://%s%s/", scheme, r.Host, r.RequestURI)
-
-		// generate these fields separately, as we will only log them once, to reduce both the visual and memory clutter.
-		// all request data can be traced using the request id.
-		fields := logrus.Fields{
-			"http_scheme": scheme,
-			"http_proto":  r.Proto,
-			"http_method": r.Method,
-			"remote_addr": r.RemoteAddr,
-			"request_id":  requestID,
-			"user_agent":  r.UserAgent(),
-			"uri":         uri,
-		}
-
-		// log the only-once fields
-		logger.WithFields(fields).Info("new http request")
-
-		ctx = context.WithValue(r.Context(), "request_id", requestID)
-
-		// defer the execution of this function until after the wrapper has run, this allows us to calculate the round trip
-		// and log it.
-		defer func(s time.Time, logger *logrus.Entry) {
-			logger.WithFields(logrus.Fields{
-				"request_id": requestID,
-				"elapsed":    time.Since(s),
-			}).Info("http request processed")
-		}(s, logger)
-
-		// next middleware
-		next.ServeHTTP(rw, r.WithContext(ctx))
-	})
 }

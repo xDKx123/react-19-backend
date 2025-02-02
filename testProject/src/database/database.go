@@ -26,14 +26,20 @@ func ConnectLocalDatabase() (*gorm.DB, error) {
 	var err error
 
 	// Retry logic: attempt to connect to the database up to 10 times
-	for i := 1; i <= 10; i++ {
+	for i := 0; i < 10; i++ {
+		db, err = nil, nil
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
 			log.Println("Connected to the database successfully!")
 			break
 		}
-		log.Printf("Attempt %d: Failed to connect to the database. Retrying in 2 seconds...\n", i)
+		log.Printf("Attempt %d: Failed to connect to the database. Retrying in 2 seconds...\n", i+1)
 		time.Sleep(2 * time.Second)
+	}
+
+	if err != nil {
+		log.Println("Failed to connect to the database.")
+		return nil, err
 	}
 
 	if db != nil {

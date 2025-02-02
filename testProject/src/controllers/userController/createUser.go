@@ -3,23 +3,7 @@ package userController
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"testProject/src/services/userServices"
 )
-
-type UserController struct {
-	service *userServices.UserService
-}
-
-func NewUserController(service *userServices.UserService) *UserController {
-	return &UserController{service: service}
-}
-
-func (c *UserController) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-}
 
 type CreateUserRequest struct {
 	Name     string `json:"name" binding:"required"`
@@ -42,5 +26,5 @@ func (c *UserController) Register(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"user": user})
+	ctx.JSON(http.StatusOK, gin.H{"userController": user})
 }
