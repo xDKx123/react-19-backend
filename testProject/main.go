@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"testProject/src/controllers"
@@ -32,6 +33,8 @@ func main() {
 	// Create a new Gin router
 	fmt.Println("Initializing Gin router...")
 	router := gin.Default()
+
+	router.Use(cors.Default())
 
 	// Apply the middleware to the router
 	router.Use(middleware.JSONResponseGinMiddleware())
